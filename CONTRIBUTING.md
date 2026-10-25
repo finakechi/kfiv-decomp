@@ -8,12 +8,19 @@ from assembly to matching C.
 
 - **Never commit anything from the disc**: no ISO, ELF, `asm/`, `build/` or
   extracted files. `.gitignore` covers them; keep it that way.
-- A pull request must build: `./build.sh` ends with
+- A matching-source or build-system pull request must build: `./build.sh` ends with
   `build/kfiv.rom: OK (matches retail)`.
-- Commit only the sources you wrote (`.c` files under `src/game/`), plus
-  `config/symbol_addrs.txt` if you give something a real name. Everything
-  else the build regenerates; don't commit `docs/progress/` either, the
-  maintainers refresh it.
+- Commit authored source, headers, tools, tests and documentation relevant to the
+  change. Keep host reference models in `validation/models/`, outside the matching
+  source scan. Do not commit regenerated build output. Maintainers refresh
+  `docs/progress/`; validation-only changes do not regenerate matching percentages.
+- Run the [behavioral checks](validation/README.md) and existing lints. For a
+  documentation/validation-only change with no retail inputs, report that a retail
+  rebuild was not run and verify that matching source/build inputs are unchanged.
+  Host-test success never substitutes for a required matching build.
+
+This fork follows [AGENTS.md](AGENTS.md). Keep upstream attribution and link
+independent evidence in KF4AncientCity rather than duplicating its status records.
 
 ## Setup
 
@@ -24,7 +31,7 @@ curl, git and Python 3.
 On Fedora: `sudo dnf install glibc-devel.i686 libstdc++.i686 flex bison`.
 
 ```sh
-git clone https://github.com/Voicedrew11/kfiv-decomp.git   # a path without spaces
+git clone https://github.com/finakechi/kfiv-decomp.git   # a path without spaces
 cd kfiv-decomp
 mkdir -p baserom
 ln -s "/path/to/King's Field The Ancient City.iso" baserom/kfiv_us.iso
