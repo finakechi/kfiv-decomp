@@ -19,6 +19,10 @@ The test reads `Menu_ClearKeyItems` and `Menu_AddKeyItem` directly from the curr
 It compiles those original function bodies with a minimal shim: `s32` is
 `int32_t`, and the twelve-slot global is host memory. No stored copy of the game
 functions is tested. New dependencies or signatures require reviewing the shim.
+The item-base definition must be exactly one unsuffixed decimal literal after
+comment removal. Expressions, continuations, suffixes, octal and hexadecimal
+definitions fail closed; they require reviewing the shim instead of truncating
+a numeric prefix.
 
 The independent C reference models retain the C15/C16 reset and insertion logic:
 reset twelve words to -1; insert the mapped value for IDs 47..59 into the first
@@ -35,7 +39,10 @@ Each unmodified run compares:
 
 Three controls modify temporary copies of the actual game functions: a wrong reset
 sentinel, a wrong dispatch value, and treating only -1 as empty. Each must produce
-a measured disagreement and exit 1. A crash or missing output is a failed control.
+a measured disagreement and exit 1, with empty runtime stderr and exactly the two
+expected result lines/counts. A crash, sanitizer diagnostic, extra output or
+impossible mismatch count is a failed control. The diagnostic output is retained
+in the assertion failure.
 The checkout's game source is never modified by these tests.
 
 ## Provenance and scope
@@ -95,3 +102,27 @@ build at that source revision is documented in
 Before claiming the complete fork milestone, run `./build.sh` on MainPC against
 verified read-only media and record its output. Detailed project progress remains
 in KF4AncientCity's master handoff.
+
+## Review corrections — 2026-10-25
+
+The MainPC review of `2e90eca` reproduced two gaps: exit-time sanitizer errors
+could satisfy the mutation assertion, and macro expressions could be truncated to
+a decimal prefix. The fixes reject runtime stderr, enforce exact output/count
+contracts and require a complete supported macro literal. Four new regression
+tests supplement the original four behavioral tests. One compiles the review's
+real exit-time signed-overflow specimen and proves its UBSan diagnostic is rejected
+despite valid mismatch output. The macro regressions exercise temporary headers.
+The new regressions failed against the reviewed implementation before the fixes.
+
+The unmodified game comparisons remain 144,000 independent cases plus 128,000
+stateful operations; added contract regressions are not extra game-behavior cases.
+Cloud GCC 13.3.0/Python 3.12.14 passes all eight tests normally and under ASan/UBSan
+with `ASAN_OPTIONS=detect_leaks=0`; local leak checks did not run. Clang coverage
+is supplied by CI, rather than claimed as a cloud-local run.
+
+The supplied MainPC report separately records a failed fresh build: the existing
+period compiler/assembler received SIGSYS through that execution route and no
+fresh linked ROM was produced. Its comparison of the existing C18 ROM with retail
+is historical output validation. These test fixes do not resolve that execution
+blocker or establish a fresh retail rebuild. No matching source/build input changes
+are needed for these corrections.

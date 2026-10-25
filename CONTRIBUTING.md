@@ -105,8 +105,10 @@ claude mcp add ghidra -- "$PWD/tools/ghidra_mcp.sh"
 ```
 
 The import uses `build/kfiv.elf`, so Ghidra has the same function names and
-sizes as splat. Run the import again after `./build.sh` to pick up new names
-(it discards anything renamed inside Ghidra). The project goes in
+sizes as splat. Reimport only into a disposable or explicitly dedicated import
+project: it discards names/analysis maintained inside Ghidra. Preserve existing
+analysis in a backup or separate project and obtain specific authorization before
+replacing it; a rebuild alone is not authority to reimport. The project goes in
 `~/ghidra-projects/kfiv/` unless `KFIV_GHIDRA_PROJECT` names another `.gpr`.
 
 ## Notes on this compiler

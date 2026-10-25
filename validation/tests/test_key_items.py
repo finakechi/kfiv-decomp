@@ -15,7 +15,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 NAMES = ("Menu_ClearKeyItems", "Menu_AddKeyItem")
-EXPECTED = "differential cases=144000 mismatches=0\nsequence cases=128000 mismatches=0\n"
+RESULTS = re.compile(r"differential cases=144000 mismatches=([0-9]+)\n"
+                     r"sequence cases=128000 mismatches=([0-9]+)\n")
 COMMENTS_AND_STRINGS = re.compile(
     r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'', re.S
 )
@@ -43,12 +44,17 @@ def extract_function(source, name):
 def game_units():
     menu = (ROOT / "src/game/ui/menu_screens.c").read_text(encoding="utf-8")
     item = (ROOT / "src/game/item/item.h").read_text(encoding="utf-8")
-    constants = re.findall(r"^#define\s+ITEM_KEY_FIRST\s+(\d+)\b", item, re.M)
-    if len(constants) != 1:
-        raise ValueError("expected one integer ITEM_KEY_FIRST in item.h")
+    # Only a complete unsuffixed decimal literal is supported by this shim.
+    # Collapse block comments to whitespace so a tail after a multiline comment
+    # cannot become a different preprocessor line and be silently discarded.
+    item = re.sub(r"//[^\n]*|/\*.*?\*/", " ", item, flags=re.S)
+    constants = re.findall(r"^[ \t]*#[ \t]*define[ \t]+ITEM_KEY_FIRST\b([^\n]*)$", item, re.M)
+    if len(constants) != 1 or re.fullmatch(r"0|[1-9][0-9]*", constants[0].strip()) is None:
+        raise ValueError("expected one complete decimal-literal ITEM_KEY_FIRST in item.h; "
+                         "expressions, suffixes, octal and hexadecimal need a reviewed shim")
     bodies = "\n\n".join(extract_function(menu, name) for name in NAMES)
     return ("#include <stdint.h>\ntypedef int32_t s32;\n"
-            f"#define ITEM_KEY_FIRST {constants[0]}\n"
+            f"#define ITEM_KEY_FIRST {constants[0].strip()}\n"
             "s32 key_item_slots[12];\n" + bodies + "\n")
 
 
@@ -79,19 +85,30 @@ class KeyItemBehavior(unittest.TestCase):
 
     def test_actual_reset_and_insert_agree_with_independent_models(self):
         run = self.compile_and_run(self.source)
-        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertEqual(run.stdout, EXPECTED)
+        self.assert_harness_result(run, expected_returncode=0)
         print(run.stdout, end="")
+
+    def assert_harness_result(self, run, expected_returncode):
+        details = f"stdout:\n{run.stdout}\nstderr:\n{run.stderr}"
+        # This deterministic harness has no expected runtime stderr. In particular,
+        # an exit-time sanitizer error must not count as a successful mutant.
+        self.assertEqual(run.stderr, "", "unexpected runtime stderr\n" + details)
+        self.assertEqual(run.returncode, expected_returncode, details)
+        result = RESULTS.fullmatch(run.stdout)
+        self.assertIsNotNone(result, "invalid harness result/count contract\n" + details)
+        mismatches = tuple(map(int, result.groups()))
+        for count, maximum in zip(mismatches, (144000, 128000)):
+            self.assertLessEqual(count, maximum, details)
+        if expected_returncode == 0:
+            self.assertEqual(sum(mismatches), 0, details)
+        else:
+            self.assertGreater(sum(mismatches), 0, details)
 
     def assert_mutation_detected(self, original, replacement):
         self.assertEqual(self.source.count(original), 1,
                          f"mutation anchor changed: {original!r}; review the control")
         run = self.compile_and_run(self.source.replace(original, replacement, 1))
-        # Exit 1 means a measured disagreement; a crash or sanitizer failure is not a pass.
-        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
-        results = re.findall(r"mismatches=(\d+)", run.stdout)
-        self.assertEqual(len(results), 2, run.stdout + run.stderr)
-        self.assertGreater(sum(map(int, results)), 0)
+        self.assert_harness_result(run, expected_returncode=1)
 
     def test_detects_wrong_reset_sentinel(self):
         self.assert_mutation_detected("s32 empty = -1;", "s32 empty = 0;")
