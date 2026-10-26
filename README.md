@@ -5,12 +5,25 @@ FromSoftware, 2001) for the PlayStation 2. The target is the USA retail boot
 ELF, `SLUS_203.18` (SLUS-20318). The goal is C source that the original
 toolchain compiles back into the identical executable.
 
-[![code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Voicedrew11/kfiv-decomp/main/docs/progress/badge-code.json)](docs/progress/) [![functions](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Voicedrew11/kfiv-decomp/main/docs/progress/badge-functions.json)](docs/progress/) [![game named](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Voicedrew11/kfiv-decomp/main/docs/progress/badge-named.json)](docs/progress/) [![structs recovered](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Voicedrew11/kfiv-decomp/main/docs/progress/badge-structs.json)](docs/progress/)
+[![code](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/finakechi/kfiv-decomp/main/docs/progress/badge-code.json)](docs/progress/) [![functions](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/finakechi/kfiv-decomp/main/docs/progress/badge-functions.json)](docs/progress/) [![game named](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/finakechi/kfiv-decomp/main/docs/progress/badge-named.json)](docs/progress/) [![structs recovered](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/finakechi/kfiv-decomp/main/docs/progress/badge-structs.json)](docs/progress/)
 
-**Status:** the build reproduces the retail ROM image (all bytes the console
-loads) **byte for byte**. The SDK, libc, libm and libgcc code is in C (181
-units in `src/sce/`, about 12 % of `.text`); the game itself is still
-splat-disassembled assembly. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+**Fork status (2026-10-24):** this fork inherits the extensive matching game C
+from [Voicedrew11/kfiv-decomp](https://github.com/Voicedrew11/kfiv-decomp) at
+`09adc15974b2936b09943d2a55cc29fa472a79b2`. The
+[C18 reproduction](https://github.com/finakechi/KF4AncientCity/blob/04d294f52fd0df96e13027e74933094d11dce1a2/evidence/2026-10-24-c18-upstream-build-reproduction.md)
+on MainPC rebuilt the program ROM image byte for byte against retail. C-source
+units account for **99.15% of measured code bytes**; the 99.58% report below also
+counts hand-written assembly. The whole ELF remains unmatched, including excluded
+graphics microcode sections. These results do not establish gameplay testing or
+a PC port. `Map_UpdateDrawState` remains generated assembly in the matching build.
+
+This fork is the game-source/build workspace. Independent evidence and detailed
+project progress remain in
+[KF4AncientCity](https://github.com/finakechi/KF4AncientCity/blob/main/MASTER_HANDOFF.md);
+[PS2DInfo](https://github.com/finakechi/PS2DInfo) owns shared PS2 tooling.
+Read [AGENTS.md](AGENTS.md) for working rules and
+[validation/README.md](validation/README.md) for host behavioral tests that need
+no disc. The historical [roadmap](docs/ROADMAP.md) remains an upstream reference.
 
 > No disc data is in this repository. You supply your own disc image; the
 > build extracts the ELF from it and checks its SHA-1.
