@@ -73,6 +73,46 @@ complete translation units, byte matching or a PC port. The upstream name "key
 items" identifies source symbols; it adds no independently verified gameplay meaning.
 Nothing under `validation/` enters the matching build's `src/game`/`src/sce` scan.
 
+## Save and restore copy slices — 2026-10-26
+
+The additional `test_key_item_save.py` checks two **bounded statements**
+in the merged game's actual `src/game/core/game.c`, not copied versions of
+its whole functions:
+
+- `Game_WriteSaveImage`: copy 48 bytes from the twelve `key_item_slots`
+  into the current `save_cursor`, then advance the cursor by 48.
+- `Game_ReadSaveImage`: copy the same 48 bytes in the opposite direction,
+  then advance the cursor by 48.
+
+The extractor finds the complete game function definitions and requires
+**exactly one** supported two-statement copy window in each. Missing or
+duplicate windows fail rather than silently testing a substitute. It
+compiles those exact source statements into a minimal host wrapper.
+If the game changes to a different expression or adds relevant effects,
+the extractor and model must be reviewed rather than broadening an
+unchecked source parser.
+
+The reference models in `models/key_item_save.c` are adapted from
+[KF4AncientCity C16's instruction-derived pack/unpack functions](https://github.com/finakechi/KF4AncientCity/blob/04d294f52fd0df96e13027e74933094d11dce1a2/src/common_item_effects/kf_common_item_list.c).
+They calculate twelve little-endian 32-bit values independently of the
+fork's `memcpy` statements. The 4,096 save and 4,096 restore comparisons
+include all-empty slots, signed extremes, sequential values and seeded
+random bit patterns. Tests check bytes, the 48-byte cursor movement,
+unchanged sources and untouched 16-byte buffer tails. Four separate
+temporary mutations shorten a copy or an advance and must produce
+real mismatches with the exact two-line output contract. Two additional
+extractor tests reject missing/duplicate source sites. The original
+eight reset/insertion validation tests remain independent.
+
+**Limits:** the harness explicitly requires a little-endian host, like
+the EE target. It tests final effects of the actual **two copy windows
+only**; it does not run the enclosing game functions, infer the offset
+of the fields within the full save, validate header/checksum logic or
+exercise a memory card, emulator or retail gameplay. Host safeguards
+and buffer ownership are not assertions about the PS2 implementation.
+No commercial images, ELF, SDK or Ghidra access are needed. Matching
+source and build inputs remain unchanged.
+
 ## Sanitizers and CI
 
 CI runs GCC and Clang, with and without address/undefined-behavior sanitizers.
