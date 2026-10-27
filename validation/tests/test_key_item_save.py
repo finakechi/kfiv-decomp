@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_key_items import extract_function, ROOT
+from test_key_items import COMMENTS_AND_STRINGS, extract_function, ROOT
 
 SOURCE_PATH = ROOT / "src/game/core/game.c"
 NAMES = ("Game_WriteSaveImage", "Game_ReadSaveImage")
@@ -43,11 +43,16 @@ def game_copy_units(source):
     windows = []
     for name, pattern in zip(NAMES, WINDOWS):
         body = extract_function(source, name)
-        matches = list(pattern.finditer(body))
+        # Keep positions unchanged while excluding comments and string literals.
+        visible = COMMENTS_AND_STRINGS.sub(
+            lambda match: re.sub(r"[^\n]", " ", match.group()), body
+        )
+        matches = list(pattern.finditer(visible))
         if len(matches) != 1:
             raise ValueError(f"{name}: expected one 48-byte copy-and-advance window, "
                              f"found {len(matches)}")
-        windows.append(matches[0].group(0))
+        match = matches[0]
+        windows.append(body[match.start():match.end()])
     return (
         "#include <stddef.h>\n#include <stdint.h>\n#include <string.h>\n"
         "int32_t key_item_slots[12];\n"
@@ -154,6 +159,25 @@ class SaveLoadCopyBehavior(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "found 2"):
             game_copy_units(self.source.replace(anchor, anchor + "\n" + anchor, 1))
 
+
+    def test_extract_rejects_commented_out_live_copy(self):
+        anchor = "memcpy(save_cursor, key_item_slots, 0x30); save_cursor += 0x30;"
+        self.assertEqual(self.source.count(anchor), 1)
+        changed = self.source.replace(anchor, "/* " + anchor + " */", 1)
+        with self.assertRaisesRegex(ValueError, "Game_WriteSaveImage"):
+            game_copy_units(changed)
+
+    def test_extract_ignores_extra_commented_copy(self):
+        anchor = "memcpy(key_item_slots, save_cursor, 0x30); save_cursor += 0x30;"
+        self.assertEqual(self.source.count(anchor), 1)
+        changed = self.source.replace(anchor, "/* " + anchor + " */\n" + anchor, 1)
+        self.assertEqual(game_copy_units(changed), self.units)
+
+    def test_extract_ignores_extra_string_literal_copy(self):
+        anchor = "memcpy(key_item_slots, save_cursor, 0x30); save_cursor += 0x30;"
+        self.assertEqual(self.source.count(anchor), 1)
+        changed = self.source.replace(anchor, '"' + anchor + '"\n' + anchor, 1)
+        self.assertEqual(game_copy_units(changed), self.units)
 
 if __name__ == "__main__":
     unittest.main()

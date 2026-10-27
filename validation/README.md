@@ -86,8 +86,9 @@ its whole functions:
 
 The extractor finds the complete game function definitions and requires
 **exactly one** supported two-statement copy window in each. Missing or
-duplicate windows fail rather than silently testing a substitute. It
-compiles those exact source statements into a minimal host wrapper.
+duplicate windows fail rather than silently testing a substitute.
+Commented-out copies and string-literal lookalikes are ignored, with source
+offsets preserved so only live statements enter the minimal host wrapper.
 If the game changes to a different expression or adds relevant effects,
 the extractor and model must be reviewed rather than broadening an
 unchecked source parser.
@@ -101,8 +102,9 @@ random bit patterns. Tests check bytes, the 48-byte cursor movement,
 unchanged sources and untouched 16-byte buffer tails. Four separate
 temporary mutations shorten a copy or an advance and must produce
 real mismatches with the exact two-line output contract. Two additional
-extractor tests reject missing/duplicate source sites. The original
-eight reset/insertion validation tests remain independent.
+extractor tests reject missing/duplicate source sites; three new
+regressions reject a commented-out live copy and ignore comment/string
+lookalikes. The original eight reset/insertion tests remain independent.
 
 **Limits:** the harness explicitly requires a little-endian host, like
 the EE target. It tests final effects of the actual **two copy windows
